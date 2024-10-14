@@ -1,25 +1,14 @@
-import psutil
-import GPUtil
+from datasets import load_dataset
 
-def get_memory_info():
-    memory = psutil.virtual_memory()
-    print(f"Total Memory: {memory.total / (1024 ** 3):.2f} GB")
-    print(f"Available Memory: {memory.available / (1024 ** 3):.2f} GB")
-    print(f"Used Memory: {memory.used / (1024 ** 3):.2f} GB")
-    print(f"Memory Usage: {memory.percent}%")
+# 加载 CSV 文件到 Hugging Face Dataset
+data_files = {
+    "train": "C:\\Users\\AaronWu\\Desktop\\folder\\暫存\\titanic\\train.csv",
+    "test": "C:\\Users\\AaronWu\\Desktop\\folder\\暫存\\titanic\\test.csv"
+}
 
-def get_gpu_info():
-    gpus = GPUtil.getGPUs()
-    for gpu in gpus:
-        print(f"GPU: {gpu.name}")
-        print(f"  Load: {gpu.load * 100:.2f}%")
-        print(f"  Free Memory: {gpu.memoryFree:.2f} MB")
-        print(f"  Used Memory: {gpu.memoryUsed:.2f} MB")
-        print(f"  Total Memory: {gpu.memoryTotal:.2f} MB")
-        print(f"  Temperature: {gpu.temperature} °C")
+# 加载数据集
+dataset = load_dataset('csv', data_files=data_files)
 
-if __name__ == "__main__":
-    print("Memory Information:")
-    get_memory_info()
-    print("\nGPU Information:")
-    get_gpu_info()
+# 将数据集推送到 Hugging Face Hub
+dataset.push_to_hub("dataset")
+
