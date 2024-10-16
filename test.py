@@ -1,13 +1,3 @@
-from datasets import load_dataset
-
-# 加载 CSV 文件到 Hugging Face Dataset
-data_files = {
-    "train": "C:\\Users\\AaronWu\\Desktop\\xcat.zip",
-    "test": "C:\\Users\\AaronWu\\Desktop\\xcat test result.zip"
-}
-
-# 加载数据集
-dataset = load_dataset('zip', data_files=data_files)
-
-# 将数据集推送到 Hugging Face Hub
-dataset.push_to_hub("test")
+import torch
+print(torch.cuda.is_available())  # 應該輸出 True
+print(torch.cuda.current_device())  # 應該顯示當前使用的 GPU 設備 ID
