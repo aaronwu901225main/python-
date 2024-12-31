@@ -12,6 +12,11 @@ def extract_text_from_pdf(pdf_path):
 
 def convert_pdfs_to_json(input_folder, output_file):
     """將PDF文件資料夾轉換為JSON格式"""
+    # 確保輸出路徑的資料夾存在
+    output_dir = os.path.dirname(output_file)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    
     data = []
     for filename in os.listdir(input_folder):
         if filename.endswith(".pdf"):
