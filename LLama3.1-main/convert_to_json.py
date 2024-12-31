@@ -1,23 +1,30 @@
 import os
 import json
+from PyPDF2 import PdfReader
 
-def convert_to_json(input_folder, output_file):
+def extract_text_from_pdf(pdf_path):
+    """從PDF文件中提取文本內容"""
+    reader = PdfReader(pdf_path)
+    text = ""
+    for page in reader.pages:
+        text += page.extract_text()
+    return text.strip()
+
+def convert_pdfs_to_json(input_folder, output_file):
+    """將PDF文件資料夾轉換為JSON格式"""
     data = []
-    # 遍歷資料夾中的所有檔案
     for filename in os.listdir(input_folder):
-        if filename.endswith(".txt"):
+        if filename.endswith(".pdf"):
             file_path = os.path.join(input_folder, filename)
-            with open(file_path, 'r', encoding='utf-8') as file:
-                content = file.read().strip()
-                # 將每篇文章的內容分段加入 JSON
-                data.append({"content": content})
+            print(f"正在處理文件: {filename}")
+            pdf_text = extract_text_from_pdf(file_path)
+            data.append({"content": pdf_text})
     
-    # 將結果儲存為 JSON 文件
     with open(output_file, 'w', encoding='utf-8') as json_file:
         json.dump(data, json_file, indent=4, ensure_ascii=False)
     print(f"轉換完成！JSON 檔案儲存於 {output_file}")
 
 # 使用方法
-input_folder = "papers/"  # 您的論文存放資料夾
+input_folder = "papers/"  # PDF文件存放資料夾
 output_file = "dataset/train.json"
-convert_to_json(input_folder, output_file)
+convert_pdfs_to_json(input_folder, output_file)
