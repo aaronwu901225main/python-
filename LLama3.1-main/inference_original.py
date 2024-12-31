@@ -5,8 +5,6 @@ from transformers import (
     AutoTokenizer,
     BitsAndBytesConfig,
 )
-from huggingface_hub import login
-login("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")
 
 NEW_MODEL="meta-llama/Llama-3.1-8B-Instruct"  # replace the output-dir/checkpoint-xx
 

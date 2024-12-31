@@ -6,6 +6,9 @@ from transformers import (
     BitsAndBytesConfig,
 )
 
+from huggingface_hub import login
+login("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")
+
 NEW_MODEL="llama3-fake2-5-r32/checkpoint-3600"  # replace the output-dir/checkpoint-xx
 
 # load trained/resized tokenizer
