@@ -9,7 +9,7 @@ from transformers import (
 from huggingface_hub import login
 login("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")
 
-NEW_MODEL="llama3-fake2-5-r32/checkpoint-3600"  # replace the output-dir/checkpoint-xx
+NEW_MODEL="llama3-test/checkpoint-1"  # replace the output-dir/checkpoint-xx
 
 # load trained/resized tokenizer
 tokenizer = AutoTokenizer.from_pretrained(NEW_MODEL)
@@ -27,7 +27,7 @@ model = PeftModel.from_pretrained(model, NEW_MODEL)
 model = model.merge_and_unload()
 
 system = "You are a Artificial Intelligence assistant and willing to answer the question from the user."  
-user = "user's question"   #  replace your question / prompt
+user = "What we might do after building a XCAT phantom"   #  replace your question / prompt
 # use chat template
 text = f'''<|begin_of_text|><|start_header_id|>system<|end_header_id|>{system}<|eot_id|>  
 <|start_header_id|>user<|end_header_id|>{user}<|eot_id|>
