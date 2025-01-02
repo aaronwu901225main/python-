@@ -1,35 +1,44 @@
 import os
 import json
 from PyPDF2 import PdfReader
+import re
 
 def extract_text_from_pdf(pdf_path):
-    """從PDF文件中提取文本內容"""
+    """Extract all text from a PDF file."""
     reader = PdfReader(pdf_path)
-    text = ""
+    content = []
     for page in reader.pages:
-        text += page.extract_text()
-    return text.strip()
+        content.append(page.extract_text())
+    return " ".join(content)  # 合併所有頁面的文字
 
-def convert_pdfs_to_json(input_folder, output_file):
-    """將PDF文件資料夾轉換為JSON格式"""
-    # 確保輸出路徑的資料夾存在
-    output_dir = os.path.dirname(output_file)
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    
-    data = []
-    for filename in os.listdir(input_folder):
+def split_into_sentences(text):
+    """Split text into sentences using regular expressions."""
+    # 使用正則表達式分割句子
+    sentences = re.split(r'(?<=[.!?]) +', text)
+    return [sentence.strip() for sentence in sentences if sentence.strip()]
+
+def generate_json(sentences):
+    """Convert sentences into JSON format."""
+    json_data = [{"content": sentence} for sentence in sentences]
+    return json_data
+
+def process_pdfs(pdf_folder, output_json):
+    """Process all PDFs in a folder and save extracted sentences to a JSON file."""
+    all_data = []
+    for filename in os.listdir(pdf_folder):
         if filename.endswith(".pdf"):
-            file_path = os.path.join(input_folder, filename)
-            print(f"正在處理文件: {filename}")
-            pdf_text = extract_text_from_pdf(file_path)
-            data.append({"content": pdf_text})
-    
-    with open(output_file, 'w', encoding='utf-8') as json_file:
-        json.dump(data, json_file, indent=4, ensure_ascii=False)
-    print(f"轉換完成！JSON 檔案儲存於 {output_file}")
+            print(f"Processing {filename}...")
+            pdf_path = os.path.join(pdf_folder, filename)
+            content = extract_text_from_pdf(pdf_path)
+            sentences = split_into_sentences(content)
+            json_data = generate_json(sentences)
+            all_data.extend(json_data)
 
-# 使用方法
-input_folder = "papers/"  # PDF文件存放資料夾
-output_file = "dataset/train.json"
-convert_pdfs_to_json(input_folder, output_file)
+    with open(output_json, "w", encoding="utf-8") as f:
+        json.dump(all_data, f, indent=4, ensure_ascii=False)
+    print(f"JSON saved to {output_json}")
+
+# 使用方式
+pdf_folder = "paper/"  # 替換為PDF所在資料夾路徑
+output_json = "dataset/train.json"  # 輸出JSON檔案名稱
+process_pdfs(pdf_folder, output_json)
