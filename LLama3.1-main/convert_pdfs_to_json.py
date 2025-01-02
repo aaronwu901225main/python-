@@ -39,6 +39,6 @@ def process_pdfs(pdf_folder, output_json):
     print(f"JSON saved to {output_json}")
 
 # 使用方式
-pdf_folder = "paper/"  # 替換為PDF所在資料夾路徑
+pdf_folder = "papers/"  # 替換為PDF所在資料夾路徑
 output_json = "dataset/train.json"  # 輸出JSON檔案名稱
 process_pdfs(pdf_folder, output_json)
