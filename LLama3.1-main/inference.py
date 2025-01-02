@@ -27,7 +27,7 @@ model = PeftModel.from_pretrained(model, NEW_MODEL)
 model = model.merge_and_unload()
 
 system = "You are a Artificial Intelligence assistant and willing to answer the question from the user."  
-user = "What basic heart data does the four-chamber FE living heart model (LHM) refer to?"   #  replace your question / prompt
+user = "What structures of the heart are referenced by the four-chamber FE living heart model (LHM)?"   #  replace your question / prompt
 # use chat template
 text = f'''<|begin_of_text|><|start_header_id|>system<|end_header_id|>{system}<|eot_id|>  
 <|start_header_id|>user<|end_header_id|>{user}<|eot_id|>
