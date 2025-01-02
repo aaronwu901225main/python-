@@ -80,7 +80,7 @@ sft_config = SFTConfig(
     output_dir=OUTPUT_DIR,
     dataset_text_field='content',  # this is the final text example we formatted
     max_seq_length=2048,
-    num_train_epochs=1,
+    num_train_epochs=100,
     per_device_train_batch_size=2,  # training batch size
     gradient_accumulation_steps=4,  # by using gradient accum, we updating weights every: batch_size * gradient_accum_steps = 4 * 2 = 8 steps
     optim="paged_adamw_8bit",  # paged adamw
