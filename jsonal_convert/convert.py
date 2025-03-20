@@ -24,4 +24,4 @@ def convert_jsonl_to_json(input_file, output_file, repeat=10):
 input_file = "test.jsonl"  # 替換成你的 JSONL 檔案名稱
 output_file = "math500_6.json"  # 轉換後的 JSON 檔案名稱
 
-convert_jsonl_to_json(input_file, output_file, repeat=10)
+convert_jsonl_to_json(input_file, output_file, repeat=5)
