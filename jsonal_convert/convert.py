@@ -13,7 +13,6 @@ def convert_jsonl_to_json(input_file, output_file, repeat=10):
                 "cot_answer": f'{data["solution"]}\n\nanswer : <{data["answer"]}>'
             }
             
-            # 重複 10 次
             transformed_data.extend([transformed_entry] * repeat)
 
     # 將轉換後的資料寫入 JSON 檔案
@@ -24,4 +23,4 @@ def convert_jsonl_to_json(input_file, output_file, repeat=10):
 input_file = "test.jsonl"  # 替換成你的 JSONL 檔案名稱
 output_file = "math500_6.json"  # 轉換後的 JSON 檔案名稱
 
-convert_jsonl_to_json(input_file, output_file, repeat=5)
+convert_jsonl_to_json(input_file, output_file, repeat=3)
