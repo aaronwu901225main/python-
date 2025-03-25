@@ -2,17 +2,17 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 
-# === 讀取圖片 ===
-image_path = "image.jpg"  # ← 替換成你的圖片路徑
+image_path = "image.jpg"  # 替換為你的圖像路徑
 image = cv2.imread(image_path)
+if image is None:
+    raise FileNotFoundError(f"無法讀取圖片：{image_path}")
+
 output_image = image.copy()
 gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-# === 邊緣偵測 + Hough 線條偵測 ===
 edges = cv2.Canny(gray, 50, 150, apertureSize=3)
-lines = cv2.HoughLinesP(edges, 1, np.pi / 180, threshold=100, minLineLength=100, maxLineGap=10)
+lines = cv2.HoughLinesP(edges, 1, np.pi / 180, threshold=100, minLineLength=80, maxLineGap=10)
 
-# === 定義找兩線交點的函數 ===
 def line_intersection(line1, line2):
     x1, y1, x2, y2 = line1.reshape(4)
     x3, y3, x4, y4 = line2.reshape(4)
@@ -28,17 +28,16 @@ def line_intersection(line1, line2):
     determinant = A1 * B2 - A2 * B1
 
     if determinant == 0:
-        return None  # 平行線
+        return None
     else:
         x = (B2 * C1 - B1 * C2) / determinant
         y = (A1 * C2 - A2 * C1) / determinant
         return int(x), int(y)
 
-# === 計算所有交點與保留有效線條 ===
-intersections = []
-valid_lines = []
-
 if lines is not None:
+    intersections = []
+    valid_lines = []
+
     for i in range(len(lines)):
         for j in range(i + 1, len(lines)):
             pt = line_intersection(lines[i], lines[j])
@@ -47,30 +46,30 @@ if lines is not None:
                 valid_lines.append(lines[i])
                 valid_lines.append(lines[j])
 
-# === 計算消失點 ===
-if intersections:
-    intersections_np = np.array(intersections)
-    vanish_point = np.mean(intersections_np, axis=0).astype(int)
+    if intersections:
+        intersections_np = np.array(intersections)
+        vanish_point = np.mean(intersections_np, axis=0).astype(int)
 
-    # 找出兩條最靠近消失點的線段
-    distances = [np.linalg.norm(np.mean(line.reshape(2, 2), axis=0) - vanish_point) for line in valid_lines]
-    closest_indices = np.argsort(distances)[:2]
-    chosen_lines = [valid_lines[idx] for idx in closest_indices]
+        distances = [np.linalg.norm(np.mean(line.reshape(2, 2), axis=0) - vanish_point) for line in valid_lines]
+        closest_indices = np.argsort(distances)[:2]
+        chosen_lines = [valid_lines[idx] for idx in closest_indices]
 
-    # 繪製線條與指向消失點的連線
-    for line in chosen_lines:
-        x1, y1, x2, y2 = line.reshape(4)
-        cv2.line(output_image, (x1, y1), (x2, y2), (0, 255, 0), 2)  # 原始線條（綠色）
-        cv2.line(output_image, (x1, y1), tuple(vanish_point), (255, 0, 0), 2)  # 到消失點（藍色）
-        cv2.line(output_image, (x2, y2), tuple(vanish_point), (255, 0, 0), 2)
+        for line in chosen_lines:
+            x1, y1, x2, y2 = line.reshape(4)
+            cv2.line(output_image, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            cv2.line(output_image, (x1, y1), tuple(vanish_point), (255, 0, 0), 2)
+            cv2.line(output_image, (x2, y2), tuple(vanish_point), (255, 0, 0), 2)
 
-    # 標記消失點
-    cv2.circle(output_image, tuple(vanish_point), 10, (0, 0, 255), -1)
+        cv2.circle(output_image, tuple(vanish_point), 10, (0, 0, 255), -1)
 
-# === 顯示圖像 ===
-output_rgb = cv2.cvtColor(output_image, cv2.COLOR_BGR2RGB)
-plt.figure(figsize=(10, 8))
-plt.imshow(output_rgb)
-plt.title("Detected Lines and Vanishing Point")
-plt.axis("off")
-plt.show()
+        # 顯示圖像
+        output_rgb = cv2.cvtColor(output_image, cv2.COLOR_BGR2RGB)
+        plt.figure(figsize=(10, 8))
+        plt.imshow(output_rgb)
+        plt.title("Detected Lines and Vanishing Point")
+        plt.axis("off")
+        plt.show()
+    else:
+        print("⚠️ 無法找到任何交點，請確認圖片中有明顯的透視線條。")
+else:
+    print("⚠️ 沒有偵測到任何直線，請確認圖片品質或調整參數。")
