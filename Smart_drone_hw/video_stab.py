@@ -5,7 +5,7 @@ import math
 # 穩定半徑，越大代表平滑程度越高，但對移動的反應變慢
 SMOOTHING_RADIUS = 1000
 # 邊界裁剪，以避免黑邊明顯
-HORIZONTAL_BORDER_CROP = 20
+HORIZONTAL_BORDER_CROP = 50
 
 # 定義平移與旋轉變換的參數
 class TransformParam:
