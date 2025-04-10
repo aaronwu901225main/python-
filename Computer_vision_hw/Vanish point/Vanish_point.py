@@ -1,155 +1,174 @@
 import cv2
 import numpy as np
 import random
+import math
+import os
 
 def weighted_median(data, weights):
-    # 提取數據和權重
-    sorted_data = sorted(zip(data, weights))
-    sorted_data = np.array(sorted_data)
-    sorted_data = sorted_data[sorted_data[:, 1].argsort()]
-    sorted_weights = sorted_data[:, 1]
-    sorted_data = sorted_data[:, 0]
-    
-    # 累積權重並計算加權中位數
-    cumulative_weights = np.cumsum(sorted_weights)
-    total_weight = cumulative_weights[-1]
-    median_idx = np.searchsorted(cumulative_weights, total_weight / 2)
-    
-    return sorted_data[median_idx]
+    sorted_pairs = sorted(zip(data, weights), key=lambda x: x[0])
+    total_weight = sum(weights)
+    cumulative_weight = 0
+    for value, weight in sorted_pairs:
+        cumulative_weight += weight
+        if cumulative_weight >= total_weight / 2:
+            return value
+    return sorted_pairs[-1][0]
 
-def ransac_intersection(lines, threshold=1.0):
+def point_to_line_distance(x0, y0, x1, y1, x2, y2):
+    # 點(x0,y0) 到線段(x1,y1)-(x2,y2)的距離
+    numerator = abs((y2 - y1) * x0 - (x2 - x1) * y0 + x2 * y1 - y2 * x1)
+    denominator = math.hypot(y2 - y1, x2 - x1)
+    return numerator / denominator if denominator != 0 else float('inf')
+
+def ransac_intersection(lines, threshold=5.0, iterations=200):
     best_inliers = []
-    best_vp = None
+    best_point = None
 
-    # 隨機選擇兩條線段進行多次隨機迭代
-    for _ in range(100):  # 隨機選擇迭代次數
-        sample_lines = random.sample(lines, 2)
-        x1, y1, x2, y2 = sample_lines[0][2]
-        x3, y3, x4, y4 = sample_lines[1][2]
-        
-        # 計算交點
-        denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
-        if abs(denom) > 1e-6:
-            px = ((x1 * y2 - y1 * x2) * (x3 - x4) - (x1 - x2) * (x3 * y4 - y3 * x4)) / denom
-            py = ((x1 * y2 - y1 * x2) * (y3 - y4) - (y1 - y2) * (x3 * y4 - y3 * x4)) / denom
-            inliers = []
+    for _ in range(iterations):
+        l1, l2 = random.sample(lines, 2)
+        x1, y1, x2, y2 = l1
+        x3, y3, x4, y4 = l2
 
-            for line in lines:
-                # 檢查交點是否在每條線段附近
-                dist = abs((px - line[0]) * (y2 - y1) - (py - line[1]) * (x2 - x1))
-                if dist < threshold:
-                    inliers.append((px, py))
-            
-            if len(inliers) > len(best_inliers):
-                best_inliers = inliers
-                best_vp = (px, py)
+        denom = (x1 - x2)*(y3 - y4) - (y1 - y2)*(x3 - x4)
+        if abs(denom) < 1e-6:
+            continue
 
-    return best_vp
+        px = ((x1*y2 - y1*x2)*(x3 - x4) - (x1 - x2)*(x3*y4 - y3*x4)) / denom
+        py = ((x1*y2 - y1*x2)*(y3 - y4) - (y1 - y2)*(x3*y4 - y3*x4)) / denom
 
-def find_vanishing_point(image_path, min_line_length=1000, angle_threshold=np.pi/1000):
-    # 讀取圖片
+        inliers = []
+        for lx1, ly1, lx2, ly2 in lines:
+            dist = point_to_line_distance(px, py, lx1, ly1, lx2, ly2)
+            if dist < threshold:
+                inliers.append((px, py))
+
+        if len(inliers) > len(best_inliers):
+            best_inliers = inliers
+            best_point = (px, py)
+
+    return best_point
+
+def find_vanishing_point(image_path, min_line_length=100, angle_threshold=np.pi/6):
     img = cv2.imread(image_path)
     if img is None:
-        print("無法讀取圖片")
+        print("❌ 無法讀取圖片")
         return
-    
-    height, width = img.shape[:2]  # 獲取圖片尺寸
-    
-    # 轉換成灰階
+
+    height, width = img.shape[:2]
+
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    
-    # 邊緣檢測
-    edges = cv2.Canny(gray, 100, 200, apertureSize=3)  # 增加Canny邊緣檢測的精度
-    
-    # 使用 HoughLinesP 檢測線段
-    lines = cv2.HoughLinesP(edges, 1, np.pi / 180, threshold=300, minLineLength=min_line_length, maxLineGap=1000)
-    
+    edges = cv2.Canny(gray, 50, 150, apertureSize=3)
+
+    lines = cv2.HoughLinesP(edges, 1, np.pi / 180, threshold=100,
+                            minLineLength=min_line_length, maxLineGap=30)
+
     if lines is None:
-        print("未檢測到線段")
+        print("❌ 未檢測到線段")
         return
-    
-    # 將線段轉換為極坐標形式並過濾
+
     filtered_lines = []
     for line in lines:
         x1, y1, x2, y2 = line[0]
-        length = np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
-        if length < min_line_length:
-            continue
-            
         dx, dy = x2 - x1, y2 - y1
-        if dx == 0:
+        if dx == 0 and dy == 0:
             continue
-        theta = np.arctan2(dy, dx)
-        rho = x1 * np.cos(theta) + y1 * np.sin(theta)
-        
-        # 角度篩選
-        if not filtered_lines:
-            filtered_lines.append((rho, theta, (x1, y1, x2, y2)))
-        else:
-            # 檢查新線的角度與現有線的角度差異
-            min_angle_diff = min(abs(theta - t) for _, t, _ in filtered_lines)
-            if min_angle_diff > angle_threshold:  # 角度差異大於閾值才加入
-                filtered_lines.append((rho, theta, (x1, y1, x2, y2)))
-    
-    if len(filtered_lines) < 2:
-        print("有效線段不足以計算交點")
+
+        theta = math.atan2(dy, dx)
+        filtered_lines.append((x1, y1, x2, y2, theta))
+
+    # 過濾角度類似的線條（可選）
+    angle_groups = []
+    angle_eps = angle_threshold
+    for line in filtered_lines:
+        grouped = False
+        for group in angle_groups:
+            if abs(line[4] - group[0][4]) < angle_eps:
+                group.append(line)
+                grouped = True
+                break
+        if not grouped:
+            angle_groups.append([line])
+
+    # 從每組挑一條線出來做 RANSAC
+    representative_lines = [group[0][:4] for group in angle_groups if len(group) > 0]
+
+    if len(representative_lines) < 2:
+        print("❌ 有效線段不足以計算交點")
         return
-    
-    # 使用RANSAC來過濾不準確的交點
+
+    vp = ransac_intersection(representative_lines)
+
+    if vp is None:
+        print("❌ 無法估計消失點")
+        return
+
+    x_vp, y_vp = vp
+
+    # 計算每個交點的距離作為權重（距中心越近權重越高）
     intersections = []
-    for i in range(len(filtered_lines)):
-        rho1, theta1, (x1, y1, x2, y2) = filtered_lines[i]
-        a1 = np.cos(theta1)
-        b1 = np.sin(theta1)
-        
-        cv2.line(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-        
-        for j in range(i + 1, len(filtered_lines)):
-            rho2, theta2, _ = filtered_lines[j]
-            a2 = np.cos(theta2)
-            b2 = np.sin(theta2)
-            
-            denom = a1 * b2 - a2 * b1
-            if abs(denom) > 1e-10:
-                x = (b2 * rho1 - b1 * rho2) / denom
-                y = (-a2 * rho1 + a1 * rho2) / denom
-                intersections.append([x, y])
-    
+    for i in range(len(representative_lines)):
+        for j in range(i + 1, len(representative_lines)):
+            x1, y1, x2, y2 = representative_lines[i]
+            x3, y3, x4, y4 = representative_lines[j]
+
+            denom = (x1 - x2)*(y3 - y4) - (y1 - y2)*(x3 - x4)
+            if abs(denom) < 1e-6:
+                continue
+
+            px = ((x1*y2 - y1*x2)*(x3 - x4) - (x1 - x2)*(x3*y4 - y3*x4)) / denom
+            py = ((x1*y2 - y1*x2)*(y3 - y4) - (y1 - y2)*(x3*y4 - y3*x4)) / denom
+            intersections.append((px, py))
+
     if intersections:
-        # 分別計算X和Y坐標的加權中位數
-        xs = [pt[0] for pt in intersections]
-        ys = [pt[1] for pt in intersections]
+        xs = [p[0] for p in intersections]
+        ys = [p[1] for p in intersections]
+        weights = [1] * len(intersections)  # 每個交點權重都一樣
 
-        # 計算每個交點的權重（這裡假設根據交點與圖像中心的距離來計算權重）
-        weights = [np.sqrt((x - width / 2) ** 2 + (y - height / 2) ** 2) for x, y in intersections]
+        x_final = int(weighted_median(xs, weights))
+        y_final = int(weighted_median(ys, weights))
 
-        # 計算加權中位數
-        x_vp = weighted_median(xs, weights)
-        y_vp = weighted_median(ys, weights)
+        # 畫出代表線段
+        for line in representative_lines:
+            x1, y1, x2, y2 = line
+            dist1 = np.hypot(x1 - x_final, y1 - y_final)
+            dist2 = np.hypot(x2 - x_final, y2 - y_final)
 
-        # 標記消失點（放大圓點）
-        x_vp, y_vp = int(x_vp), int(y_vp)
-        if (0 <= x_vp <= width) and (0 <= y_vp <= height):
-            cv2.circle(img, (x_vp, y_vp), 50, (0, 0, 255), -1)  
-            print(f"消失點座標: ({x_vp}, {y_vp}) - 在圖片內")
-        else:
-            x_vp_edge = max(0, min(x_vp, width - 1))
-            y_vp_edge = max(0, min(y_vp, height - 1))
-            cv2.circle(img, (x_vp_edge, y_vp_edge), 50, (0, 0, 255), -1)  
-            cv2.putText(img, "  VP outside", (x_vp_edge + 20, y_vp_edge + 20), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 5)
-            print(f"消失點座標: ({x_vp}, {y_vp}) - 在圖片外")
-        
-        # 調整顯示大小
-        display_img = cv2.resize(img, (min(1280, width), min(720, height)))
-        cv2.imshow('Vanishing Point Detection', display_img)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-        cv2.imwrite('result.jpg', img)
+            if dist1 < 100 or dist2 < 100:  # 100 是你可以調整的距離閾值
+                # 取距離較遠的端點畫到消失點
+                if dist1 > dist2:
+                    cv2.line(img, (x1, y1), (x_final, y_final), (0, 255, 0), 5)
+                else:
+                    cv2.line(img, (x2, y2), (x_final, y_final), (0, 255, 0), 5)
+            else:
+                cv2.line(img, (x1, y1), (x2, y2), (0, 255, 0), 5)
+
+        # 畫消失點
+        cv2.circle(img, (x_final, y_final), 30, (0, 0, 255), -1)
+        print(f"✅ 消失點座標: ({x_final}, {y_final})")
+
+
+        # 顯示與儲存結果
+        # 等比例縮放顯示圖片，避免變形
+        max_width = 1280
+        max_height = 720
+        h, w = img.shape[:2]
+        scale = min(max_width / w, max_height / h)
+        new_size = (int(w * scale), int(h * scale))
+        resized = cv2.resize(img, new_size)
+
+        try:
+            cv2.imshow("Vanishing Point", resized)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+        except:
+            print("📷 無法顯示圖像（非GUI環境）")
+
+        output_path = os.path.join(os.path.dirname(image_path), 'result.jpg')
+        cv2.imwrite(output_path, img)
+        print(f"📁 圖像已儲存為: {output_path}")
     else:
-        print("未找到消失點")
+        print("❌ 未找到交點")
 
 if __name__ == "__main__":
-    # 請將 'image.jpg' 替換成你的圖片路徑
-    image_path = r'C:\Users\AaronWu\Documents\GitHub\python-\Computer_vision_hw\Vanish point\image.jpg'
-    find_vanishing_point(image_path, min_line_length=2000)  # 可調整角度閾值
+    image_path = 'Computer_vision_hw/Vanish point/image.jpg'
+    find_vanishing_point(image_path, min_line_length=200, angle_threshold=np.pi/20)
