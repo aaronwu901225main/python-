@@ -75,7 +75,7 @@ for subject in subjects:
 
 
 
-print(dataset[0]["text"])
+print(mergged_data[0]["text"])
 
 from trl import SFTTrainer, DataCollatorForCompletionOnlyLM
 from transformers import TrainingArguments
