@@ -29,9 +29,56 @@ model = FastLanguageModel.get_peft_model(
     loftq_config = None, # And LoftQ
 )
 
-from datasets import load_dataset, Dataset
+from datasets import load_dataset
 import os
 import json
+
+def load_json_files_from_directory(directory):
+    # 用來儲存所有載入的資料，所有資料將會放在同一個列表中
+    all_data = []
+    amount = 0
+
+    # 遞迴處理指定目錄
+    for root, dirs, files in os.walk(directory):
+        for file_name in files:
+            if file_name.endswith(".json"):  # 檢查檔案是否為 json 
+                # 去除.ipynb_checkpoints資料夾
+                if ".ipynb_checkpoints" in root:
+                    continue
+                amount += 1
+                file_path = os.path.join(root, file_name)
+                print(f"正在處理 {file_path}...")
+
+                # 載入 json 檔案
+                try:
+                    with open(file_path, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        # 假設每個 JSON 檔案的內容本來就是一個列表
+                        if isinstance(data, list):
+                            all_data.extend(data)  # 將每個檔案的資料合併進 all_data 列表
+                        else:
+                            all_data.append(data)  # 如果不是列表，直接將資料放入
+                except Exception as e:
+                    print(f"處理 {file_path} 時發生錯誤: {e}")
+    print(f"總共載入了 {amount} 筆資料。")
+    return all_data
+
+# 指定目錄
+directory = "./LLM_COT"
+
+# 載入所有 json 檔案並合併
+merged_data = load_json_files_from_directory(directory)
+
+# 顯示載入的數據量
+print(f"總共載入了 {len(merged_data)} 筆資料。")
+
+# 如果需要，您可以將這些資料進一步處理或儲存成一個新的檔案
+# 例如，將所有資料合併成一個新的 json 檔案
+output_file = "merged_data.json"
+with open(output_file, "w", encoding="utf-8") as f:
+    json.dump(merged_data, f, ensure_ascii=False, indent=4)
+
+dataset = load_dataset("json", data_files="merged_data.json", split="train")
 
 chat_template = """<|begin_of_text|><|start_header_id|>user<|end_header_id|>
 Please read the following question and its reasoning process, and determine whether the reasoning is valid.
@@ -54,33 +101,9 @@ def formatting_func(example):
         "Accept" if example["label"] == 1 else "Reject",
     )
 
-root_dir = "./LLM_COT"
-# 找出所有子檔案
-subjects = [d for d in os.listdir(root_dir) if os.path.isdir(os.path.join(root_dir, d))]
-print(subjects)
+dataset = dataset.map(lambda x: {"text": formatting_func(x)})
 
-# 初始化一个空列表来存储合并后的数据
-merged_data = []
-
-# 遍历每个学科的数据
-for subject in subjects:
-    subject_dir = os.path.join(root_dir, subject)
-    for file_name in os.listdir(subject_dir):
-        if file_name.endswith(".json"):
-            file_path = os.path.join(subject_dir, file_name)
-            print(f"正在处理 {file_path}...")
-            with open(file_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                # 遍历每个条目并进行格式化
-                formatted_data = [{"text": formatting_func(item)} for item in data]  # Wrap each item in a dictionary with 'text' key
-                merged_data.extend(formatted_data)
-
-# 使用合并后的数据创建一个 Dataset 对象
-dataset = Dataset.from_list(merged_data)
-
-# 检查数据集是否正确加载
-print(f"总共加载了 {len(dataset)} 条数据。")
-print(dataset[0])  # 打印第一条数据以检查格式
+# print(dataset[0]["text"])
 
 from trl import SFTTrainer, DataCollatorForCompletionOnlyLM
 from transformers import TrainingArguments
