@@ -1,86 +1,94 @@
-import os
-import json
+from unsloth import FastLanguageModel
 import torch
-from datasets import load_dataset, Dataset
-from transformers import AutoTokenizer, AutoModelForCausalLM, TrainingArguments, Trainer
-from peft import prepare_model_for_kbit_training, LoraConfig, get_peft_model
-from transformers import BitsAndBytesConfig
 
-# 你可以在這裡更換模型（例如：meta-llama/Llama-2-7b-chat-hf）
-MODEL_NAME = "meta-llama/Llama-2-7b-chat-hf"
+model_id = "unsloth/Meta-Llama-3.1-8B-Instruct-bnb-4bit"
 
-# 1. 載入資料集
-def load_data():
-    with open("correct_college_biology_2025-04-18_03-16-49.json") as f1, open("wrong_college_biology_2025-04-18_03-16-49.json") as f2:
-        data = json.load(f1) + json.load(f2)
-    for sample in data:
-        input_text = sample["question"] + "\n" + sample["CoT"]
-        label = sample["label"]
-        sample["input"] = input_text
-        sample["output"] = "approve" if label == 1 else "reject"
-    return Dataset.from_list(data)
+max_seq_length = 15000 # Choose any! We auto support RoPE Scaling internally!
+dtype = None # None for auto detection. Float16 for Tesla T4, V100, Bfloat16 for Ampere+
+load_in_4bit = True # Use 4bit quantization to reduce memory usage. Can be False.
 
-# 2. 建 tokenizer 和 model，使用 4-bit 量化
-tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, use_fast=True)
-tokenizer.pad_token = tokenizer.eos_token
-
-quant_config = BitsAndBytesConfig(
-    load_in_4bit=True,
-    bnb_4bit_compute_dtype=torch.float16,
-    bnb_4bit_use_double_quant=True,
-    bnb_4bit_quant_type="nf4"
+model, tokenizer = FastLanguageModel.from_pretrained(
+    model_name = model_id,
+    max_seq_length = max_seq_length,
+    dtype = dtype,
+    load_in_4bit = load_in_4bit,
 )
 
-model = AutoModelForCausalLM.from_pretrained(
-    MODEL_NAME,
-    quantization_config=quant_config,
-    device_map="auto"
+model = FastLanguageModel.get_peft_model(
+    model,
+    r = 16, # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
+    target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
+                      "gate_proj", "up_proj", "down_proj",],
+    lora_alpha = 16,
+    lora_dropout = 0, # Supports any, but = 0 is optimized
+    bias = "none",    # Supports any, but = "none" is optimized
+    # [NEW] "unsloth" uses 30% less VRAM, fits 2x larger batch sizes!
+    use_gradient_checkpointing = "unsloth", # True or "unsloth" for very long context
+    random_state = 3407,
+    use_rslora = False,  # We support rank stabilized LoRA
+    loftq_config = None, # And LoftQ
 )
 
-model = prepare_model_for_kbit_training(model)
+from datasets import load_dataset
 
-# 3. 設定 LoRA config
-lora_config = LoraConfig(
-    r=8,
-    lora_alpha=16,
-    target_modules=["q_proj", "v_proj"],
-    lora_dropout=0.05,
-    bias="none",
-    task_type="CAUSAL_LM"
+dataset = load_dataset("json", data_files="mmlu_cot/college_mathematics.jsonl", split="train")
+
+chat_template = """<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+Please read the following question and its reasoning process, and determine whether the reasoning is valid.
+Only output 'Accept' or 'Reject'.
+
+### Question:
+{}
+
+### Reasoning:
+{}
+
+<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+{}
+<|eot_id|>"""
+
+def formatting_func(example):
+    return chat_template.format(
+        example["question"],
+        example["CoT"],
+        "Accept" if example["label"] == 1 else "Reject",
+    )
+
+dataset = dataset.map(lambda x: {"text": formatting_func(x)})
+
+# print(dataset[0]["text"])
+
+from trl import SFTTrainer, DataCollatorForCompletionOnlyLM
+from transformers import TrainingArguments
+from unsloth import is_bfloat16_supported
+
+trainer = SFTTrainer(
+    model = model,
+    tokenizer = tokenizer,
+    train_dataset = dataset,
+    dataset_text_field = "text",
+    max_seq_length = max_seq_length,
+    dataset_num_proc = 2,
+    packing = False, # Can make training 5x faster for short sequences.
+    args = TrainingArguments(
+        per_device_train_batch_size = 2,
+        gradient_accumulation_steps = 4,
+        warmup_steps = 5,
+        num_train_epochs = 1,
+        learning_rate = 2e-4,
+        fp16 = not is_bfloat16_supported(),
+        bf16 = is_bfloat16_supported(),
+        logging_steps = 1,
+        optim = "adamw_8bit",
+        weight_decay = 0.01,
+        lr_scheduler_type = "linear",
+        seed = 3407,
+        output_dir = "outputs",
+    ),
+    data_collator=DataCollatorForCompletionOnlyLM(
+        tokenizer=tokenizer,
+        response_template="<|start_header_id|>assistant<|end_header_id|>\n",
+    ),
 )
-model = get_peft_model(model, lora_config)
 
-# 4. 資料前處理
-def tokenize(sample):
-    prompt = f"[INST] {sample['input']} [/INST]"
-    target = sample["output"]
-    full = prompt + " " + target
-    tokenized = tokenizer(full, truncation=True, padding="max_length", max_length=512)
-    tokenized["labels"] = tokenized["input_ids"]
-    return tokenized
-
-dataset = load_data().map(tokenize)
-
-# 5. 訓練參數
-training_args = TrainingArguments(
-    output_dir="./lora-bio",
-    per_device_train_batch_size=4,
-    gradient_accumulation_steps=4,
-    learning_rate=2e-4,
-    num_train_epochs=3,
-    logging_steps=10,
-    save_strategy="epoch",
-    fp16=True,
-    bf16=False,
-    report_to="none"
-)
-
-# 6. 訓練
-trainer = Trainer(
-    model=model,
-    args=training_args,
-    train_dataset=dataset,
-    tokenizer=tokenizer
-)
-
-trainer.train()
+trainer_stats = trainer.train()
