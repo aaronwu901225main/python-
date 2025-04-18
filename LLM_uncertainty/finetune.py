@@ -31,7 +31,7 @@ model = FastLanguageModel.get_peft_model(
 
 from datasets import load_dataset
 
-dataset = load_dataset("json", data_files="mmlu_cot/college_mathematics.jsonl", split="train")
+dataset = load_dataset("json", data_files="merged_dataset.jsonl", split="train")
 
 chat_template = """<|begin_of_text|><|start_header_id|>user<|end_header_id|>
 Please read the following question and its reasoning process, and determine whether the reasoning is valid.
