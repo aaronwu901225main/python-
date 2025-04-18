@@ -29,7 +29,7 @@ model = FastLanguageModel.get_peft_model(
     loftq_config = None, # And LoftQ
 )
 
-from datasets import load_dataset
+from datasets import load_dataset, Dataset
 import os
 import json
 
@@ -56,26 +56,30 @@ def formatting_func(example):
 
 root_dir = "./LLM_COT"
 subjects = [name for name in os.listdir(root_dir) 
-            if os.path.isdir(os.path.join(root_dir, name)) and name.startswith("college")]
+            if os.path.isdir(os.path.join(root_dir, name))]
 print(subjects)
 
-mergged_data = []
+# 初始化一个空列表来存储合并后的数据
+merged_data = []
+
+# 遍历每个学科的数据
 for subject in subjects:
     subject_dir = os.path.join(root_dir, subject)
     for file_name in os.listdir(subject_dir):
         if file_name.endswith(".json"):
             file_path = os.path.join(subject_dir, file_name)
-            print(f"Processing {file_path}...")
+            print(f"正在处理 {file_path}...")
             with open(file_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                for item in data:
-                    dataset = load_dataset("json", data_files="merged_dataset.jsonl", split="train")
-                    dataset = dataset.map(lambda x: {"text": formatting_func(x)})
-                    mergged_data.append(dataset)
+                # 遍历每个条目并进行格式化
+                formatted_data = [{"text": formatting_func(item)} for item in data]  # Wrap each item in a dictionary with 'text' key
+                merged_data.extend(formatted_data)
 
+# 使用合并后的数据创建一个 Dataset 对象
+dataset = Dataset.from_list(merged_data)
 
-
-print(mergged_data[0]["text"])
+# 检查数据集是否正确加载
+print(f"总共加载了 {len(dataset)} 条数据。")
 
 from trl import SFTTrainer, DataCollatorForCompletionOnlyLM
 from transformers import TrainingArguments
