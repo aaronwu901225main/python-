@@ -30,8 +30,8 @@ model = FastLanguageModel.get_peft_model(
 )
 
 from datasets import load_dataset
-
-dataset = load_dataset("json", data_files="merged_dataset.jsonl", split="train")
+import os
+import json
 
 chat_template = """<|begin_of_text|><|start_header_id|>user<|end_header_id|>
 Please read the following question and its reasoning process, and determine whether the reasoning is valid.
@@ -54,9 +54,28 @@ def formatting_func(example):
         "Accept" if example["label"] == 1 else "Reject",
     )
 
-dataset = dataset.map(lambda x: {"text": formatting_func(x)})
+root_dir = "./LLM_COT"
+subjects = [name for name in os.listdir(root_dir) 
+            if os.path.isdir(os.path.join(root_dir, name)) and name.startswith("college")]
+print(subjects)
 
-# print(dataset[0]["text"])
+mergged_data = []
+for subject in subjects:
+    subject_dir = os.path.join(root_dir, subject)
+    for file_name in os.listdir(subject_dir):
+        if file_name.endswith(".json"):
+            file_path = os.path.join(subject_dir, file_name)
+            print(f"Processing {file_path}...")
+            with open(file_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                for item in data:
+                    dataset = load_dataset("json", data_files="merged_dataset.jsonl", split="train")
+                    dataset = dataset.map(lambda x: {"text": formatting_func(x)})
+                    mergged_data.append(dataset)
+
+
+
+print(dataset[0]["text"])
 
 from trl import SFTTrainer, DataCollatorForCompletionOnlyLM
 from transformers import TrainingArguments
