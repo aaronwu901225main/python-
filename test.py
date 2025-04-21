@@ -1,2 +1,7 @@
-import numpy as np
-print(np.arange(0, 1.001, 0.001))
+a=[1,2,3,4,5]
+b=[6,7,8,9,10]
+count=0
+for i in [a,b]:
+    print(i)
+    print(count)
+    count+=1
