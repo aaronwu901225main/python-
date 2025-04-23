@@ -1,8 +1,11 @@
+import os
 import cv2
 import numpy as np
-import random
+import matplotlib
 import matplotlib.pyplot as plt
-import os
+
+matplotlib.rcParams['font.sans-serif'] = ['Microsoft JhengHei']  # 微軟正黑體（Windows）
+matplotlib.rcParams['axes.unicode_minus'] = False  # 避免負號顯示錯誤
 
 def white_balance_1(img):
     '''
@@ -94,7 +97,7 @@ def white_balance_2(img_input):
  
     return img
  
-def white_balance_3(img):
+def white_balance_3(img,gain=1.0):
     '''
     灰度世界假设
     :param img: cv2.imread读取的图片数据
@@ -104,9 +107,9 @@ def white_balance_3(img):
     B_ave, G_ave, R_ave = np.mean(B), np.mean(G), np.mean(R)
     K = (B_ave + G_ave + R_ave) / 3
     Kb, Kg, Kr = K / B_ave, K / G_ave, K / R_ave
-    Ba = (B * Kb)
-    Ga = (G * Kg)
-    Ra = (R * Kr)
+    Ba = (B * Kb)*gain
+    Ga = (G * Kg)*gain
+    Ra = (R * Kr)*gain
  
     for i in range(len(Ba)):
         for j in range(len(Ba[0])):
@@ -339,7 +342,7 @@ def process_white_balance(image_path, save_results=True, show_results=True, outp
 
     img1 = white_balance_1(img)
     img2 = white_balance_2(img)
-    img3 = white_balance_3(img)
+    img3 = white_balance_3(img, gain=1.0) # 調整增益值可改變白平衡效果
     img4 = white_balance_4(img)
     img5 = white_balance_5(img)
 
@@ -372,7 +375,7 @@ def process_white_balance(image_path, save_results=True, show_results=True, outp
 # === 主程式入口 ===
 if __name__ == "__main__":
     process_white_balance(
-        image_path='./white-balance-auto-sample-image_1465-7.jpg', 
+        image_path='./Computer_vision_hw\White Balance\white-balance-auto-sample-image_1465-1.jpg', 
         save_results=True,
         show_results=True
     )
