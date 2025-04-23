@@ -110,7 +110,7 @@ def white_balance_3(img,gain=1.0):
     Ba = (B * Kb)*gain
     Ga = (G * Kg)*gain
     Ra = (R * Kr)*gain
- 
+    
     for i in range(len(Ba)):
         for j in range(len(Ba[0])):
             Ba[i][j] = 255 if Ba[i][j] > 255 else Ba[i][j]
