@@ -110,7 +110,7 @@ def white_balance_3(img,gain=1.0):
     Ba = (B * Kb)*gain
     Ga = (G * Kg)*gain
     Ra = (R * Kr)*gain
-    
+
     for i in range(len(Ba)):
         for j in range(len(Ba[0])):
             Ba[i][j] = 255 if Ba[i][j] > 255 else Ba[i][j]
@@ -348,17 +348,25 @@ def process_white_balance(image_path, save_results=True, show_results=True, outp
 
     result_imgs = [img, img1, img2, img3, img4, img5]
     result_titles = [
-        "原圖（Original）",
-        "方法1：均值白平衡法",
-        "方法2：完美反射法",
-        "方法3：灰度世界假設",
-        "方法4：偏色分析校正",
-        "方法5：動態閾值調整法"
+        "原圖(Original)",
+        "方法1:均值白平衡法",
+        "方法2:完美反射法",
+        "方法3:灰度世界假設",
+        "方法4:偏色分析校正",
+        "方法5:動態閾值調整法"
+    ]
+    save_filenames = [
+    "original.jpg",
+    "wb1_mean_balance.jpg",
+    "wb2_perfect_reflect.jpg",
+    "wb3_gray_world.jpg",
+    "wb4_color_bias_correction.jpg",
+    "wb5_dynamic_threshold.jpg"
     ]
     # 儲存圖片
     if save_results:
         for i, im in enumerate(result_imgs):
-            cv2.imwrite(os.path.join(output_dir, f"{result_titles[i]}.jpg"), im)
+            cv2.imwrite(os.path.join(output_dir, f"{save_filenames[i]}.jpg"), im)
 
     # 顯示圖片
     if show_results:
@@ -375,7 +383,8 @@ def process_white_balance(image_path, save_results=True, show_results=True, outp
 # === 主程式入口 ===
 if __name__ == "__main__":
     process_white_balance(
-        image_path='./Computer_vision_hw\White Balance\white-balance-auto-sample-image_1465-1.jpg', 
+        image_path='./Computer_vision_hw/White Balance/white-balance-auto-sample-image_1465-1.jpg',
         save_results=True,
-        show_results=True
+        show_results=True,
+        output_dir="./Computer_vision_hw/White Balance/white_balance_results"
     )
