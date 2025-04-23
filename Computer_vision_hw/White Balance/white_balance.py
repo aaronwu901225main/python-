@@ -1,7 +1,9 @@
 import cv2
 import numpy as np
 import random
- 
+import matplotlib.pyplot as plt
+import os
+
 def white_balance_1(img):
     '''
     第一种简单的求均值白平衡法
@@ -327,24 +329,50 @@ img3: 灰度世界假设
 img4: 基于图像分析的偏色检测及颜色校正方法
 img5: 动态阈值算法
 '''
-img = cv2.imread('./white-balance-auto-sample-image_1465-1.jpg')
-# img = cv2.imread('./dataset/2/1_'+str(i)+'.JPG')
-img1 = white_balance_1(img)
-img2 = white_balance_2(img)
-img3 = white_balance_3(img)
-img4 = white_balance_4(img)
-img5 = white_balance_5(img)
-print('----------------------')
- 
-# img_stack = np.vstack([img,img1,img2,img3,img4,img5])
+def process_white_balance(image_path, save_results=True, show_results=True, output_dir="white_balance_results"):
+    os.makedirs(output_dir, exist_ok=True)
 
-subplot(231),plt.imshow(img),plt.title('original')
-subplot(232),plt.imshow(img1),plt.title('white_balance_1')
-subplot(233),plt.imshow(img2),plt.title('white_balance_2')
-subplot(234),plt.imshow(img3),plt.title('white_balance_3')
-subplot(235),plt.imshow(img4),plt.title('white_balance_4')
-subplot(236),plt.imshow(img5),plt.title('white_balance_5')
-plt.show()
-# cv2.imwrite("./dataset/"+str(i)+'.JPG',img_stack)
-cv2.imshow('image',img_stack)
-cv2.waitKey(0)
+    img = cv2.imread(image_path)
+    if img is None:
+        print("無法讀取圖片，請檢查路徑")
+        return
+
+    img1 = white_balance_1(img)
+    img2 = white_balance_2(img)
+    img3 = white_balance_3(img)
+    img4 = white_balance_4(img)
+    img5 = white_balance_5(img)
+
+    result_imgs = [img, img1, img2, img3, img4, img5]
+    result_titles = [
+        "原圖（Original）",
+        "方法1：均值白平衡法",
+        "方法2：完美反射法",
+        "方法3：灰度世界假設",
+        "方法4：偏色分析校正",
+        "方法5：動態閾值調整法"
+    ]
+    # 儲存圖片
+    if save_results:
+        for i, im in enumerate(result_imgs):
+            cv2.imwrite(os.path.join(output_dir, f"{result_titles[i]}.jpg"), im)
+
+    # 顯示圖片
+    if show_results:
+        plt.figure(figsize=(12, 8))
+        for i, im in enumerate(result_imgs):
+            rgb_img = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
+            plt.subplot(2, 3, i + 1)
+            plt.imshow(rgb_img)
+            plt.title(result_titles[i])
+            plt.axis('off')
+        plt.tight_layout()
+        plt.show()
+
+# === 主程式入口 ===
+if __name__ == "__main__":
+    process_white_balance(
+        image_path='./white-balance-auto-sample-image_1465-7.jpg', 
+        save_results=True,
+        show_results=True
+    )
