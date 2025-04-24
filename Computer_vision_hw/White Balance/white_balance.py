@@ -393,7 +393,7 @@ def process_white_balance(image_path, save_results=True, show_results=True, outp
 # === 主程式入口 ===
 if __name__ == "__main__":
     process_white_balance(
-        image_path='./Computer_vision_hw/White Balance/white-balance-auto-sample-image_1465-1.jpg',
+        image_path='./Computer_vision_hw/White Balance/white-balance-auto-sample-image_1465-7.jpg',
         save_results=True,
         show_results=True,
         output_dir="./Computer_vision_hw/White Balance/white_balance_results"
