@@ -356,17 +356,27 @@ def process_white_balance(image_path, save_results=True, show_results=True, outp
         "方法5:動態閾值調整法"
     ]
     save_filenames = [
-    "original.jpg",
-    "wb1_mean_balance.jpg",
-    "wb2_perfect_reflect.jpg",
-    "wb3_gray_world.jpg",
-    "wb4_color_bias_correction.jpg",
-    "wb5_dynamic_threshold.jpg"
+    "original",
+    "wb1_mean_balance",
+    "wb2_perfect_reflect",
+    "wb3_gray_world",
+    "wb4_color_bias_correction",
+    "wb5_dynamic_threshold"
     ]
+    # 擷取/後的圖片名並去除.jpg
+    for i in image_path:
+        if i == '/':
+            image_name = image_path.split('/')[-1]
+            image_name = image_name.split('.')[0]
+            break
+        else:
+            image_name = image_path.split('\\')[-1]
+            image_name = image_name.split('.')[0]
+
     # 儲存圖片
     if save_results:
         for i, im in enumerate(result_imgs):
-            cv2.imwrite(os.path.join(output_dir, f"{save_filenames[i]}.jpg"), im)
+            cv2.imwrite(os.path.join(output_dir, f"{save_filenames[i]}_({image_name}).jpg"), im)
 
     # 顯示圖片
     if show_results:
