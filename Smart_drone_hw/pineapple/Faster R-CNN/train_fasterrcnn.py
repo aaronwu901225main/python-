@@ -17,16 +17,16 @@ def main():
     train_dataset = PineappleDataset(
         images_dir='project/images/train',
         labels_dir='project/labels/train',
-        transforms=get_transform()
+        transforms=get_transform(train=True)
     )
     test_dataset = PineappleDataset(
         images_dir='project/images/test',
         labels_dir='project/labels/test',
-        transforms=get_transform()
+        transforms=get_transform(train=False)
     )
 
-    train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True, collate_fn=collate_fn)
-    test_loader = DataLoader(test_dataset, batch_size=4, shuffle=False, collate_fn=collate_fn)
+
+    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True, collate_fn=collate_fn)
 
     # 建 Faster R-CNN 模型
     backbone = resnet_fpn_backbone('resnet50', pretrained=True)
@@ -39,7 +39,7 @@ def main():
     optimizer = torch.optim.SGD(params, lr=0.005, momentum=0.9, weight_decay=0.0005)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.1)
 
-    num_epochs = 10
+    num_epochs = 100
 
     # 訓練
     for epoch in range(num_epochs):
