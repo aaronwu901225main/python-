@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader
 from torchvision.models.detection import FasterRCNN
 from torchvision.models.detection.backbone_utils import resnet_fpn_backbone
 import torchvision.transforms as T
-
+from tqdm import tqdm
 from pineapple_dataset import PineappleDataset, get_transform
 
 def collate_fn(batch):
@@ -45,7 +45,7 @@ def main():
     for epoch in range(num_epochs):
         model.train()
         running_loss = 0.0
-        for images, targets in train_loader:
+        for images, targets in tqdm(train_loader):
             images = list(img.to(device) for img in images)
             targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
