@@ -57,10 +57,14 @@ class PineappleDataset(Dataset):
 
         return img, target
 
-def get_transform():
-    return T.Compose([
-        T.ToTensor()
-    ])
+def get_transform(train=True):
+    transforms = []
+    transforms.append(T.ToTensor())
+    if train:
+        transforms.append(T.RandomHorizontalFlip(0.5))
+        transforms.append(T.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1))
+    return T.Compose(transforms)
+
 
 # 使用範例
 # dataset = PineappleDataset('project/images/train', 'project/labels/train', transforms=get_transform())
