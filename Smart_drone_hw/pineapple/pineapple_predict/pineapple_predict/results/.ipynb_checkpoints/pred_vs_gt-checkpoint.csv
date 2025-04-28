@@ -1,0 +1,58 @@
+Image,Predicted_Count,Ground_Truth_Count
+label_3 009.jpg,161,218
+label_1 100.jpg,55,57
+label_1 085.jpg,59,59
+label_1 011.jpg,55,58
+0147.jpg,56,50
+0111.jpg,173,208
+label_1 073.jpg,59,61
+label_3 091.jpg,179,160
+0116.jpg,179,206
+label_3 069.jpg,167,200
+0150.jpg,36,40
+label_3 085.jpg,177,160
+label_1 030.jpg,58,57
+label_3 007.jpg,165,221
+label_1 055.jpg,57,58
+label_1 051.jpg,58,58
+label_3 105.jpg,139,220
+label_1 033.jpg,55,57
+0146.jpg,55,52
+0115.jpg,177,206
+label_1 065.jpg,55,57
+label_3 023.jpg,151,213
+label_1 040.jpg,57,58
+label_3 120.jpg,148,215
+0009.jpg,143,141
+label_1 027.jpg,55,58
+label_1 086.jpg,57,60
+label_3 030.jpg,165,213
+label_3 064.jpg,163,213
+0125.jpg,177,174
+0143.jpg,58,49
+0133.jpg,57,50
+label_1 013.jpg,56,56
+label_1 098.jpg,58,59
+label_3 046.jpg,157,210
+0151.jpg,33,39
+label_1 016.jpg,56,58
+label_3 004.jpg,162,200
+label_1 008.jpg,56,56
+label_3 012.jpg,164,215
+label_3 059.jpg,162,215
+label_3 026.jpg,156,215
+label_1 102.jpg,55,57
+label_1 099.jpg,57,57
+0129.jpg,173,161
+label_1 090.jpg,59,60
+label_3 087.jpg,180,159
+0006.jpg,127,130
+label_1 075.jpg,60,59
+label_1 089.jpg,61,59
+label_3 058.jpg,162,212
+label_3 045.jpg,158,209
+label_1 092.jpg,58,58
+label_1 053.jpg,61,58
+label_3 056.jpg,155,210
+label_3 044.jpg,151,209
+label_3 055.jpg,153,211

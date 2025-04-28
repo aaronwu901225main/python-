@@ -1,0 +1,3 @@
+使用yolo作為主要模型
+若要看測試集與GT的結果請看result資料夾中的CSV
+predicted_images資料夾內有框出測試資料集中的預測位置
