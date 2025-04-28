@@ -19,8 +19,8 @@ from pathlib import Path
 
 random.seed(42)
 
-all_images = list(Path('./labeled_pineapple/images').glob('*.jpg'))
-all_labels = list(Path('./labeled_pineapple/labels').glob('*.txt'))
+all_images = list(Path('../dataset/images').glob('*.jpg'))
+all_labels = list(Path('../dataset/labels').glob('*.txt'))
 
 # 隨機打散切分 (8:2)
 combined = list(zip(all_images, all_labels))
