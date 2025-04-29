@@ -7,25 +7,43 @@ import matplotlib.pyplot as plt
 matplotlib.rcParams['font.sans-serif'] = ['Microsoft JhengHei']  # 微軟正黑體（Windows）
 matplotlib.rcParams['axes.unicode_minus'] = False  # 避免負號顯示錯誤
 
-def white_balance_1(img):
+def white_balance_1(img, percent=0.01):
     '''
-    第一种简单的求均值白平衡法
-    :param img: cv2.imread读取的图片数据
-    :return: 返回的白平衡结果图片数据
+    White Patch 白點假設法
+    基本假設：畫面上最亮的一小部分像素是白色，用這些像素做通道增益校正。
+
+    :param img: cv2.imread 讀取的 BGR 圖片
+    :param percent: 預設取最亮的前 0.01% 作為白點（可自行調整）
+    :return: 白平衡後的圖
     '''
-    # 读取图像
-    r, g, b = cv2.split(img)
-    r_avg = cv2.mean(r)[0]
-    g_avg = cv2.mean(g)[0]
-    b_avg = cv2.mean(b)[0]
-    # 求各个通道所占增益
-    k = (r_avg + g_avg + b_avg) / 3
-    kr = k / r_avg
-    kg = k / g_avg
-    kb = k / b_avg
-    r = cv2.addWeighted(src1=r, alpha=kr, src2=0, beta=0, gamma=0)
-    g = cv2.addWeighted(src1=g, alpha=kg, src2=0, beta=0, gamma=0)
-    b = cv2.addWeighted(src1=b, alpha=kb, src2=0, beta=0, gamma=0)
+    img = img.copy()
+    b, g, r = cv2.split(img)
+    m, n = b.shape
+
+    # 把 B, G, R 通道展平成一維
+    b_flat = b.flatten()
+    g_flat = g.flatten()
+    r_flat = r.flatten()
+
+    # 取得每個通道的最大亮度 (取前percent%的最大值)
+    num_pixels = m * n
+    num_highlight = max(int(num_pixels * percent / 100), 1)
+
+    # 對每個通道排序取最大亮度
+    b_max = np.mean(np.sort(b_flat)[-num_highlight:])
+    g_max = np.mean(np.sort(g_flat)[-num_highlight:])
+    r_max = np.mean(np.sort(r_flat)[-num_highlight:])
+
+    # 計算增益
+    gain_b = 255.0 / b_max
+    gain_g = 255.0 / g_max
+    gain_r = 255.0 / r_max
+
+    # 增益修正
+    b = np.clip(b * gain_b, 0, 255).astype(np.uint8)
+    g = np.clip(g * gain_g, 0, 255).astype(np.uint8)
+    r = np.clip(r * gain_r, 0, 255).astype(np.uint8)
+
     balance_img = cv2.merge([b, g, r])
     return balance_img
  
@@ -349,7 +367,7 @@ def process_white_balance(image_path, save_results=True, show_results=True, outp
     result_imgs = [img, img1, img2, img3, img4, img5]
     result_titles = [
         "原圖(Original)",
-        "方法1:均值白平衡法",
+        "方法1:White Patch Retinex",
         "方法2:完美反射法",
         "方法3:灰度世界假設",
         "方法4:偏色分析校正",
@@ -357,7 +375,7 @@ def process_white_balance(image_path, save_results=True, show_results=True, outp
     ]
     save_filenames = [
     "original",
-    "wb1_mean_balance",
+    "wb1_White_Patch_Retinex",
     "wb2_perfect_reflect",
     "wb3_gray_world",
     "wb4_color_bias_correction",
@@ -393,8 +411,8 @@ def process_white_balance(image_path, save_results=True, show_results=True, outp
 # === 主程式入口 ===
 if __name__ == "__main__":
     process_white_balance(
-        image_path='./Computer_vision_hw/White Balance/white-balance-auto-sample-image_1465-7.jpg',
+        image_path=r'./Computer_vision_hw/White Balance/white-balance-auto-sample-image_1465-1.jpg',
         save_results=True,
         show_results=True,
-        output_dir="./Computer_vision_hw/White Balance/white_balance_results"
+        output_dir=r"./Computer_vision_hw/White Balance/white_balance_results"
     )
