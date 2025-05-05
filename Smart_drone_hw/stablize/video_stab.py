@@ -1,83 +1,77 @@
 import cv2
 import numpy as np
+import os
 
-# 讀取影片
-cap = cv2.VideoCapture('DJI_0025_W.MP4')
-if not cap.isOpened():
-    print("Error: Could not open video.")
-    exit()
-
-# 取得影片的第一幀作為背景
-ret, frame = cap.read()
-if not ret:
-    print("Error: Could not read video.")
-    exit()
-
-# 影片的幾何尺寸
-frame_height, frame_width = frame.shape[:2]
-
-# 用來儲存穩定後的影片
-fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-out = cv2.VideoWriter('stabilized_video_with_moving_objects.mp4', fourcc, 30.0, (frame_width, frame_height))
-
-# 影像穩定化: 使用光流法來消除鏡頭晃動
-prev_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-transforms = []
-
-n=0
-# 讀取並處理每一幀
-while True:
-    ret, frame = cap.read()
+def stabilize_video(input_path, output_path='output_stabilized.mp4', use_sift=False, crop_output=True):
+    cap = cv2.VideoCapture(input_path)
+    ret, ref_frame = cap.read()
     if not ret:
-        break
-    
-    print("Processing frame", n)
-    n+=1
-    
-    # 轉為灰階
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        print("無法讀取影片！")
+        return
 
-    # 計算光流
-    flow = cv2.calcOpticalFlowFarneback(prev_gray, gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
+    h, w = ref_frame.shape[:2]
+    ref_gray = cv2.cvtColor(ref_frame, cv2.COLOR_BGR2GRAY)
 
-    # 從光流中計算平移和旋轉
-    dx = np.mean(flow[..., 0])
-    dy = np.mean(flow[..., 1])
+    # 建立特徵提取器
+    if use_sift:
+        feature = cv2.SIFT_create()
+        matcher = cv2.BFMatcher(cv2.NORM_L2, crossCheck=True)
+    else:
+        feature = cv2.ORB_create(1000)
+        matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
 
-    # 儲存變換
-    transforms.append((dx, dy))
+    ref_kp, ref_des = feature.detectAndCompute(ref_gray, None)
 
-    # 更新上一幀為當前幀
-    prev_gray = gray
+    # 輸出設定
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    out = cv2.VideoWriter(output_path, fourcc, fps, (w, h))
 
-# 重置影片指針
-cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+    frame_id = 0
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
 
-# 進行穩定化並生成最終影片
-for dx, dy in transforms:
-    print("正在處理平移: dx={}, dy={}".format(dx, dy))
-    ret, frame = cap.read()
-    if not ret:
-        break
+        frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        kp, des = feature.detectAndCompute(frame_gray, None)
 
-    # 應用光流變換來穩定化影像
-    matrix = np.float32([[1, 0, dx], [0, 1, dy]])
-    stabilized_frame = cv2.warpAffine(frame, matrix, (frame_width, frame_height))
+        if des is None or len(kp) < 10:
+            print(f"[Frame {frame_id}] 特徵點不足，略過對齊")
+            aligned = frame
+        else:
+            matches = matcher.match(ref_des, des)
+            matches = sorted(matches, key=lambda x: x.distance)
+            if len(matches) >= 10:
+                src_pts = np.float32([ref_kp[m.queryIdx].pt for m in matches]).reshape(-1, 1, 2)
+                dst_pts = np.float32([kp[m.trainIdx].pt for m in matches]).reshape(-1, 1, 2)
+                H, _ = cv2.findHomography(dst_pts, src_pts, cv2.RANSAC, 5.0)
+                aligned = cv2.warpPerspective(frame, H, (w, h))
+            else:
+                print(f"[Frame {frame_id}] 配對不足，略過對齊")
+                aligned = frame
 
-    # 使用第一幀作為背景，並保持移動物體
-    fgmask = cv2.absdiff(stabilized_frame, frame)
-    fgmask = cv2.cvtColor(fgmask, cv2.COLOR_BGR2GRAY)
-    _, fgmask = cv2.threshold(fgmask, 30, 255, cv2.THRESH_BINARY)
+        # 裁切中央區域避免黑邊
+        if crop_output:
+            margin = 30  # 可調整裁切範圍
+            aligned = aligned[margin:h - margin, margin:w - margin]
+            aligned = cv2.resize(aligned, (w, h))
 
-    # 將移動物體與背景分離
-    stabilized_frame[fgmask == 0] = frame[fgmask == 0]  # 保持背景固定
-    stabilized_frame[fgmask != 0] = frame[fgmask != 0]  # 保持移動物體不變
+        out.write(aligned)
 
-    # 寫入穩定化後的影片
-    out.write(stabilized_frame)
+        # Optional 顯示
+        # cv2.imshow("Stabilized", aligned)
+        # if cv2.waitKey(1) & 0xFF == ord('q'):
+        #     break
 
-# 完成後釋放資源
-cap.release()
-out.release()
+        frame_id += 1
 
-print("Video stabilized with fixed background and moving objects. Saved as 'stabilized_video_with_moving_objects.mp4'.")
+    cap.release()
+    out.release()
+    cv2.destroyAllWindows()
+    print("影片穩定處理完成！輸出檔案：", output_path)
+
+# -------- 用法 ----------
+if __name__ == "__main__":
+    input_video = "DJI_0025_W.MP4"  # 換成你要的影片路徑
+    stabilize_video(input_video, use_sift=False, crop_output=True)
