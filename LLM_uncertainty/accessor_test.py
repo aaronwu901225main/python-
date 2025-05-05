@@ -19,7 +19,7 @@ TOP_P = 0.95
 
 start_time = datetime.now()
 filename = start_time.strftime("%Y-%m-%d_%H-%M-%S")
-os.makedirs("./report", exist_ok=True)
+os.makedirs("./accessed", exist_ok=True)
 
 llm = LLM(
     model=MODEL_ID,
@@ -32,15 +32,14 @@ llm = LLM(
 
 tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
 
-root_dir = "./mmlu_splits"
-# subjects = [name for name in os.listdir(root_dir) if os.path.isdir(os.path.join(root_dir, name))]
-subjects = [name for name in os.listdir(root_dir) 
-            if os.path.isdir(os.path.join(root_dir, name)) and name.startswith("college")]
+root_dir = "./test_cot"
+# 設為資料夾中所有資料
+subjects = [name for name in os.listdir(root_dir)]
 print(subjects)
 
 for subject in subjects:
     print(f"\n🧪 Evaluating subject: {subject}")
-    data = load_from_disk(os.path.join(root_dir, subject, "train"))
+    data = load_from_disk(os.path.join(root_dir, subject))
     
     if TEST_SIZE != 'all':
         data = data.select(range(TEST_SIZE))
@@ -55,19 +54,18 @@ for subject in subjects:
         top_p=TOP_P,
     )
     
-    results = {"correct": 0, "wrong": 0}
-    choices = ['A', 'B', 'C', 'D']
-    correct_cots = []
-    wrong_cots = []
+    results = {"Correctly_Accept": 0, "Correctly_Reject": 0, "Leakage": 0, "Overkill": 0}
+    choices = ['Accept', 'Reject']
+    correct_accessor = []
+    wrong_accessor = []
     
     for i, d in enumerate(data):
         user_prompt = (
-            f"Solve the following multiple choices question:\n{d['question']}\n"
-            f"A) {d['choices'][0]}\n"
-            f"B) {d['choices'][1]}\n"
-            f"C) {d['choices'][2]}\n"
-            f"D) {d['choices'][3]}\n"
-            "Please reason step by step, and put your final answer within \\boxed{}.For example if the answer is A ,then output \\boxed{A}"
+            f"Read the following multiple choices question:\n{d['question']}\n"
+            f"And then Check the reasoning process:\n{d['CoT']}\n"
+            f"Is the reasoning process valid?\n"
+            f"Please answer with 'Accept' or 'Reject'.\n"
+            "And put your final answer within \\boxed{}.For example if the reasoning process is valid ,then output \\boxed{Accept}\n"
         )
     
         prompt =f"<｜begin▁of▁sentence｜><｜User｜>{user_prompt}\n<｜Assistant｜><think>"
@@ -89,22 +87,46 @@ for subject in subjects:
         print(f'res toks 1: {len(output1[0].outputs[0].token_ids)}')
         print(f'res toks 2: {len(output2[0].outputs[0].token_ids)}')
         print(f'Extracted answer: {extracted_answer}')
-        print(f'True answer: {choices[d["answer"]]}')
+        # 如果 label 是 1，則答案是 Accept，否則是 Reject
+        if d["label"] == 1:
+            print(f'True answer: {choices[0]}')
+        else:
+            print(f'True answer: {choices[1]}')
+
+        # 標籤判斷
+        if d["true_answer"] == d["extracted_answer"]:
+            if extracted_answer == choices[0]:
+                labels="Correctly Accept"
+                results["Correctly_Accept"] += 1
+            else:
+                labels="Overkill"
+                results["Overkill"] += 1
+        else:
+            if extracted_answer == choices[0]:
+                labels="Leakage"
+                results["Leakage"] += 1
+            else:
+                labels="Correctly Reject"
+                results["Correctly_Reject"] += 1
     
         cot = {
             'question': user_prompt,
             'CoT': '<think>' + response,
             'extracted_answer': extracted_answer,
             'true_answer': choices[d["answer"]],
-            'label': 1 if extracted_answer == choices[d["answer"]] else 0,
+            'label': labels,
         }
     
-        if extracted_answer == choices[d["answer"]]:
-            results["correct"] += 1
-            correct_cots.append(cot)
+        if d["true_answer"] == d["extracted_answer"]:
+            if extracted_answer == choices[0]:
+                correct_accessor.append(cot)
+            else:
+                wrong_accessor.append(cot)
         else:
-            results["wrong"] += 1
-            wrong_cots.append(cot)
+            if extracted_answer == choices[0]:
+                wrong_accessor.append(cot)
+            else:
+                correct_accessor.append(cot)
     
         print(f"Current results: {results}")
         print('Spend time:', datetime.now() - start_time)
@@ -112,12 +134,12 @@ for subject in subjects:
         
     # 儲存各科目結果（這是新增的）
     with open(f"./report/correct_{subject}_{filename}.json", "w") as f:
-        json.dump(correct_cots, f, indent=4)
+        json.dump(correct_accessor, f, indent=4)
 
     with open(f"./report/wrong_{subject}_{filename}.json", "w") as f:
-        json.dump(wrong_cots, f, indent=4)
+        json.dump(wrong_accessor, f, indent=4)
 
     # 重設資料以進行下一個 subject 的處理
-    correct_cots = []
-    wrong_cots = []
-    results = {"correct": 0, "wrong": 0}
+    correct_accessor = []
+    wrong_accessor = []
+    results = {"Correctly_Accept": 0, "Correctly_Reject": 0, "Leakage": 0, "Overkill": 0}

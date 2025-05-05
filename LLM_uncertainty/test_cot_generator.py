@@ -19,7 +19,7 @@ TOP_P = 0.95
 
 start_time = datetime.now()
 filename = start_time.strftime("%Y-%m-%d_%H-%M-%S")
-os.makedirs("./report", exist_ok=True)
+os.makedirs("./test_cot", exist_ok=True)
 
 llm = LLM(
     model=MODEL_ID,
@@ -111,10 +111,10 @@ for subject in subjects:
         print('=' * 20)
         
     # 儲存各科目結果（這是新增的）
-    with open(f"./report/correct_{subject}_{filename}.json", "w") as f:
+    with open(f"./test_cot_{subject}_{filename}.json", "w") as f:
         json.dump(correct_cots, f, indent=4)
 
-    with open(f"./report/wrong_{subject}_{filename}.json", "w") as f:
+    with open(f"./test_cot_{subject}_{filename}.json", "w") as f:
         json.dump(wrong_cots, f, indent=4)
 
     # 重設資料以進行下一個 subject 的處理
