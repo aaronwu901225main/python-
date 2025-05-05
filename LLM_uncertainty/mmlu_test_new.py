@@ -9,7 +9,7 @@ import os
 
 TEST_SIZE = 'all'
 
-MODEL_ID = "./LLm_accessor_merged_model"
+MODEL_ID = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
 
 REPEAT = 1
 CONTEXT_LENGTH = 32000
@@ -40,7 +40,7 @@ print(subjects)
 
 for subject in subjects:
     print(f"\n🧪 Evaluating subject: {subject}")
-    data = load_from_disk(os.path.join(root_dir, subject, "train"))
+    data = load_from_disk(os.path.join(root_dir, subject, "test"))
     
     if TEST_SIZE != 'all':
         data = data.select(range(TEST_SIZE))

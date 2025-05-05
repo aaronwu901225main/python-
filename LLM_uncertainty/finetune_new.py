@@ -139,3 +139,12 @@ trainer = SFTTrainer(
 )
 
 trainer_stats = trainer.train()
+
+# 儲存 LoRA 模型
+from peft import PeftModel
+from transformers import AutoModelForCausalLM
+
+base_model = AutoModelForCausalLM.from_pretrained("unsloth/Meta-Llama-3.1-8B-Instruct-bnb-4bit", device_map="auto", load_in_4bit=True)
+model = PeftModel.from_pretrained(base_model, "outputs")
+model = model.merge_and_unload()  # 合併 LoRA
+model.save_pretrained("./LLm_accessor_merged_model", safe_serialization=True)
