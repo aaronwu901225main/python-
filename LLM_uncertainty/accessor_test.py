@@ -9,7 +9,7 @@ import os
 
 TEST_SIZE = 'all'
 
-MODEL_ID = "./LLm_accessor_merged_model"
+MODEL_ID = "./merged_model"  # 修改為合併後的模型路徑
 
 REPEAT = 1
 CONTEXT_LENGTH = 32000
@@ -25,12 +25,10 @@ llm = LLM(
     model=MODEL_ID,
     dtype=torch.float16,
     trust_remote_code=True,
-    quantization='bitsandbytes',
-    load_format='bitsandbytes',
     max_model_len=CONTEXT_LENGTH,
-)
+)  # 移除 bitsandbytes 相關參數
 
-tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
+tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)  # 從合併模型載入分詞器
 
 root_dir = "./test_cot"
 # 設為資料夾中所有資料
@@ -133,4 +131,4 @@ for subject in subjects:
     # 重設資料以進行下一個 subject 的處理
     correct_accessor = []
     wrong_accessor = []
-    results = {"Correctly_Accept": 0, "Correctly_Reject": 0, "Leakage": 0, "Overkill": 0}
+    # results = {"Correctly_Accept": 0, "Correctly_Reject": 0, "Leakage": 0, "Overkill": 0}

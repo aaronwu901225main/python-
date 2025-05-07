@@ -110,12 +110,10 @@ for subject in subjects:
         print('Spend time:', datetime.now() - start_time)
         print('=' * 20)
         
-    # 儲存各科目結果（這是新增的）
-    with open(f"./test_cot_{subject}_{filename}.json", "w") as f:
-        json.dump(correct_cots, f, indent=4)
-
-    with open(f"./test_cot_{subject}_{filename}.json", "w") as f:
-        json.dump(wrong_cots, f, indent=4)
+    # 儲存所有題目結果（正確與錯誤整合）
+    all_cots = correct_cots + wrong_cots
+    with open(f"./test_cot/test_cot_{subject}_{filename}_all.json", "w") as f:
+        json.dump(all_cots, f, indent=4)
 
     # 重設資料以進行下一個 subject 的處理
     correct_cots = []
