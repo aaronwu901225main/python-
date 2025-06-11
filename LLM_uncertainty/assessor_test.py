@@ -13,6 +13,17 @@ model, tokenizer = FastLanguageModel.from_pretrained(
     dtype = None, # None for auto detection. Float16 for Tesla T4, V100, Bfloat16 for Ampere+
     load_in_4bit = True,
 )
+try:
+    model, tokenizer = FastLanguageModel.from_pretrained(
+        model_name = model_id,
+        max_seq_length = CONTEXT_LENGTH,
+        dtype = None,
+        load_in_4bit = True,
+    )
+except Exception as e:
+    print("❌ 模型載入失敗，請檢查 tokenizer 檔案是否正確！")
+    print("錯誤訊息：", e)
+    exit(1)
 FastLanguageModel.for_inference(model) # Enable native 2x faster inference
 
 prompt_template = """<|begin_of_text|><|start_header_id|>user<|end_header_id|>
@@ -82,12 +93,12 @@ for i, d in enumerate(data):
     print("\n\nExtracted response:", response)
     print("=" * 50)
     if response == "Accept" or response == "Accept.":
-        if d["label"] == "1":
+        if d["label"] == 1:
             correctly_accepted += 1
         else:
             leakage += 1
     elif response == "Reject" or response == "Reject.":
-        if d["label"] == "0":
+        if d["label"] == 0:
             correctly_rejected += 1
         else:
             overkill += 1
