@@ -14,3 +14,5 @@ hugging_face.ipynb
 Smart_drone_hw/stablize/output_stabilized.mp4
 \n+# Ignore entire LAB5_new dataset directory
 LAB5_new/dataset/
+LAB5_new/darknet53/dataset/
+LAB5_new/darknet53/v8/dataset/
